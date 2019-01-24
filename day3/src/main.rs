@@ -2,6 +2,7 @@ extern crate regex;
 
 use regex::Regex;
 
+#[derive(Copy, Clone)]
 struct Claim {
     id: u32,
     x: u32,
@@ -30,33 +31,50 @@ fn parse_claim(claim: &str) -> Claim {
     }
 }
 
-fn coords_to_index(x: u32, y: u32, width: u32) -> usize {
+fn get_index(x: u32, y: u32, width: u32) -> usize {
     (x + width * y) as usize
 }
 
+fn get_square_indices(claim: Claim, grid_width: u32) -> Vec<usize> {
+    let mut vec = vec![];
+
+    for y in 0..claim.height {
+        for x in 0..claim.width {
+            let index = get_index(x + claim.x, y + claim.y, grid_width);
+            vec.push(index);
+        }
+    }
+
+    vec
+}
+
 fn main() {
-    let input = std::fs::read_to_string("./example.txt").expect("Can't read file");
+    let input = std::fs::read_to_string("./input.txt").expect("Can't read file");
 
-    const GRID_WIDTH: u32 = 8;
-    const GRID_HEIGHT: u32 = 8;
+    const GRID_WIDTH: u32 = 1000;
+    const GRID_HEIGHT: u32 = 1000;
 
-    #[derive(Debug)]
     let mut grid = [0; GRID_WIDTH as usize * GRID_HEIGHT as usize];
 
     let claims = input.lines().map(|claim| parse_claim(&claim));
 
-    claims.for_each(|claim| {
-        let i_start = coords_to_index(claim.x, claim.y, GRID_WIDTH);
-        let i_stop = coords_to_index(claim.x + claim.width, claim.y + claim.height, GRID_WIDTH);
-
-        println!("{} {}", i_start, i_stop);
-        for i in i_start..i_stop {
+    for claim in claims.clone() {
+        let indices = get_square_indices(claim, GRID_WIDTH);
+        for i in indices {
             grid[i] += 1;
         }
-    });
-
-    println!("{:?}", grid.into_iter());
+    }
 
     let above_one = grid.into_iter().filter(|i| **i > 1);
-    println!("{}", above_one.count());
+    println!("Overlapping cells: {}", above_one.count());
+
+    for claim in claims {
+        let indices = get_square_indices(claim, GRID_WIDTH);
+        let free = indices.into_iter().all(|i| grid[i] == 1);
+
+        if free {
+            println!("Claim #{} does not overlap", claim.id);
+            break;
+        }
+    }
 }
